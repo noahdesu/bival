@@ -1,0 +1,4 @@
+[submodule "lib/PyC4"]
+	path = lib/PyC4
+	url = https://github.com/KDahlgren/PyC4.git
+        ignore = dirty
