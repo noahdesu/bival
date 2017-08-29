@@ -1,5 +1,6 @@
 .DS_Store
 *.pyc
+lib/PyC4/*
 
 # Byte-compiled / optimized / DLL files
 __pycache__/
