@@ -1,4 +1,4 @@
-# biv
+# bival
 
 # INSTALLATION
 ```
