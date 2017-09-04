@@ -1,0 +1,55 @@
+
+// KD
+// 29Aug2017
+
+// ceph reference :
+// https://github.com/ceph/ceph/blob/master/src/cls/rbd/cls_rbd.cc
+
+
+// **************************************************************************************************** //
+//                                                                                                      //
+// object persistence rules.                                                                            //
+//                                                                                                      //
+// **************************************************************************************************** //
+
+obj_refcount( OBID, Refstr, Refbool, SndTime+1 ) :- obj_refcount(    OBID, Refstr, Refbool, SndTime ),
+                                                    notin get_calls( OBID, Refstr, SndTime ),
+                                                    notin put_calls( OBID, Refstr, SndTime );
+
+
+
+// **************************************************************************************************** //
+//                                                                                                      //
+// cls_rc_refcount_get                                                                                  //
+//                                                                                                      //
+// set reference strings to true in refcount per targeted object                                        //
+//                                                                                                      //
+// **************************************************************************************************** //
+
+get_calls( “object1”, “key1” ) ;
+get_calls( “object2”, “key1” ) ;
+get_calls( “object3”, “key5” ) ;
+
+
+obj_refcount( OBID, REFSTR, REFBOOL, SndTime+1 ) :- obj_refcount( OBID, REFSTR, _, SndTime ),
+                                                    get_calls(    OBID, REFSTR, SndTime ),
+                                                    clock(        OBID, OBID, SndTime, _ ),
+                                                    REFBOOL = true ;
+
+
+
+// ==================================================================================================== //
+//                                                                                                      //
+// define statements (olg programs only)                                                                 //
+//                                                                                                      //
+// ==================================================================================================== //
+define(obj_refcount,{str,str,str,int}) ;
+define(get_calls,{str,str}) ;
+define(put_calls,{str,str}) ;
+define(found_keys,{str,str,int}) ;
+define(read_results,{str,str}) ;
+
+
+///////////
+//  EOF  //
+///////////

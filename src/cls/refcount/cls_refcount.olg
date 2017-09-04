@@ -1,0 +1,105 @@
+
+// KD
+// 29Aug2017
+
+// ceph reference :
+// https://github.com/ceph/ceph/blob/285aec13a84ac945236fa66b35c461cce75e4c7d/src/cls/refcount/cls_refcount.cc
+
+
+// **************************************************************************************************** //
+//                                                                                                      //
+// object persistence rules.                                                                            //
+//                                                                                                      //
+// **************************************************************************************************** //
+
+obj_refcount( OBID, Refstr, Refbool, SndTime+1 ) :- obj_refcount(    OBID, Refstr, Refbool, SndTime ),
+                                                    notin get_calls( OBID, Refstr, SndTime ),
+                                                    notin put_calls( OBID, Refstr, SndTime );
+
+
+
+// **************************************************************************************************** //
+//                                                                                                      //
+// cls_rc_refcount_get                                                                                  //
+//                                                                                                      //
+// set reference strings to true in refcount per targeted object                                        //
+//                                                                                                      //
+// **************************************************************************************************** //
+
+get_calls( “object1”, “key1” ) ;
+get_calls( “object2”, “key1” ) ;
+get_calls( “object3”, “key5” ) ;
+
+
+obj_refcount( OBID, REFSTR, REFBOOL, SndTime+1 ) :- obj_refcount( OBID, REFSTR, _, SndTime ), 
+                                                    get_calls(    OBID, REFSTR, SndTime ), 
+                                                    clock(        OBID, OBID, SndTime, _ ),
+                                                    REFBOOL = true ;
+
+
+// **************************************************************************************************** //
+//                                                                                                      //
+// cls_rc_refcount_put                                                                                  //
+//                                                                                                      //
+// check if keys exist in refcount                                                                      //
+//                                                                                                      //
+// **************************************************************************************************** //
+
+put_calls( “object1”, “key1” ) ;
+put_calls( “object2”, “key1” ) ;
+put_calls( “object3”, “key5” ) ;
+
+
+found_keys( OBID, REFSTR, SndTime ) :- obj_refcount( OBID, REFSTR, REFBOOL, SndTime ), 
+                                       put_calls(    OBID, REFSTR, SndTime ), 
+                                       REFBOOL = true ;
+
+
+// **************************************************************************************************** //
+//                                                                                                      //
+// cls_rc_refcount_set                                                                                  //
+//                                                                                                      //
+// map all existing keys to true in refcount                                                            //
+//                                                                                                      //
+// **************************************************************************************************** //
+obj_refcount( OBID, REFSTR, REFBOOL, SndTime ) :- object_refcount( OBID, REFSTR, SndTime ), 
+                                                  REFBOOL = true ;
+
+
+// **************************************************************************************************** //
+//                                                                                                      //
+// cls_rc_refcount_read                                                                                 //
+// The cls_rc_refcount_read interface returns the reference count list for a particular object.         //
+//                                                                                                      //
+// **************************************************************************************************** //
+read_results( OBID, REFSTR ) :- obj_refcount( OBID, REFSTR, _ ) ;
+
+
+// **************************************************************************************************** //
+//                                                                                                      //
+// check for error conditions                                                                           //
+//                                                                                                      //
+// NOTES :
+// errors occur if :
+//   1. encoding process fails
+//   2. decoding process fails
+//   3. individual operations fail
+// **************************************************************************************************** //
+// error( OBID, REFSTR, REFBOOL, MSG, SndTime ) :- ????
+
+
+// ==================================================================================================== //
+//                                                                                                      //
+// define statements (olg programs only)                                                                 //
+//                                                                                                      //
+// ==================================================================================================== //
+define(obj_refcount,{str,str,str,int}) ;
+define(get_calls,{str,str}) ;
+define(put_calls,{str,str}) ;
+define(found_keys,{str,str,int}) ;
+define(read_results,{str,str}) ;
+
+
+///////////
+//  EOF  //
+///////////
