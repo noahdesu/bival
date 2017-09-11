@@ -8,12 +8,14 @@ python setup.py
 ```
 
 # EXAMPLES
-```
-$ cd examples/eqnSupport/
-$ bash run_working.sh
-```
-
+Dedalus example :
 ```
 $ cd examples/delayProblem/
 $ bash run.sh cmd
+```
+
+C4 Overlog example :
+```
+$ cd examples/eqnSupport/
+$ bash run_working.sh
 ```
