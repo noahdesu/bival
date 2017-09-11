@@ -1,6 +1,13 @@
 .DS_Store
 *.pyc
 lib/PyC4/*
+lib/orik/*
+
+*.swp
+examples/**/*.txt
+examples/**/*.db
+examples/**/*.db-*
+examples/**/data/*
 
 # Byte-compiled / optimized / DLL files
 __pycache__/
