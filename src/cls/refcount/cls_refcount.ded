@@ -1,82 +1,86 @@
 
+// ******************************** //
 // ceph reference :
 // https://github.com/ceph/ceph/blob/285aec13a84ac945236fa66b35c461cce75e4c7d/src/cls/refcount/cls_refcount.cc
 
+// ******************************** //
 // current set of objects
 object_table( "object1" )@1 ;
 object_table( "object2" )@1 ;
+object_table( A )@next :- object_table( A ) ;
 
+set_true_refbool( "object1", "TRUE" )@1 ;
+set_true_refbool( "object2", "TRUE" )@1 ;
 
-default_refstr( "object1", "DEFAULT" )@1 ;
-default_refstr( "object2", "DEFAULT" )@1 ;
-default_refbool( "object1", "TRUE" )@1 ;
-default_refbool( "object2", "FALSE" )@1 ;
-obj_refcount( OBID, REFSTR, REFBOOL ) :- object_table( OBID ), default_refstr( OBID, REFSTR ), default_refbool( OBID, REFBOOL ) ;
-
-
-// **************************************************************************************************** //
-//                                                                                                      //
-// object persistence rules.                                                                            //
-//                                                                                                      //
-// **************************************************************************************************** //
-
-obj_refcount( OBID, Refstr, Refbool )@async :- obj_refcount( OBID, Refstr, Refbool ), notin get_calls( OBID, Refstr ), notin put_calls( OBID, Refstr );
-
-
-
-// **************************************************************************************************** //
-//                                                                                                      //
-// cls_rc_refcount_get                                                                                  //
-//                                                                                                      //
-// set reference strings to true in refcount per targeted object                                        //
-//                                                                                                      //
-// **************************************************************************************************** //
-
-get_calls( "object1", "DEFAULT" )@1 ;
-get_calls( "object2", "key1" )@1 ;
-get_calls( "object3", "key5" )@1 ;
-
-set_refbool( "object1", "TRUE" )@1 ;
-set_refbool( "object2", "TRUE" )@1 ;
-obj_refcount( OBID, REFSTR, REFBOOL )@next :- obj_refcount( OBID, REFSTR, _ ), get_calls( OBID, REFSTR ), set_refbool( OBID, REFBOOL) ;
-
-
-// **************************************************************************************************** //
-//                                                                                                      //
-// cls_rc_refcount_put                                                                                  //
-//                                                                                                      //
-// check if keys exist in refcount                                                                      //
-//                                                                                                      //
-// **************************************************************************************************** //
-
-put_calls( "object1", "DEFAULT" )@1 ;
-put_calls( "object2", "key1" )@1 ;
-put_calls( "object3", "key5" )@1 ;
+all_refstrs( "key0" )@1 ;
+all_refstrs( "key1" )@1 ;
+all_refstrs( "key5" )@1 ;
 
 true_refbool( "TRUE" )@1 ;
 
-found_keys( OBID, REFSTR ) :- obj_refcount( OBID, REFSTR, REFBOOL ), put_calls( OBID, REFSTR ), true_refbool( REFBOOL ) ;
+// ******************************** //
+default_refstr( "object1", "DEFAULT" )@1 ;
+default_refstr( "object2", "DEFAULT" )@1 ;
+default_refbool( "object1", "FALSE" )@1 ;
+default_refbool( "object2", "FALSE" )@1 ;
+
+// ******************************** //
+// initlization rule
+
+obj_refcount( OBID, REFSTR, REFBOOL ) :- object_table( OBID ), 
+                                         default_refstr( OBID, REFSTR ), 
+                                         default_refbool( OBID, REFBOOL ) ;
+
+// ******************************** //
+// persistance rule
+
+obj_refcount( OBID, REFSTR, REFBOOL )@async :- obj_refcount( OBID, REFSTR, REFBOOL ),
+                                               notin get_calls( OBID, REFSTR ),
+                                               notin put_calls( OBID, REFSTR ) ;
+
+// ******************************** //
+// cls_rc_refcount_get
+// set reference strings to true in refcount per targeted object
+
+get_calls( "object1", "key0" )@1 ;
+get_calls( "object2", "key1" )@1 ;
+get_calls( "object3", "key5" )@1 ;
+//get_calls( A, B )@next :- get_calls( A, B ) ;
+
+obj_refcount( OBID, REFSTR, REFBOOL )@next :- obj_refcount( OBID, _, _ ), 
+                                              get_calls( OBID, REFSTR ), 
+                                              set_true_refbool( OBID, REFBOOL) ;
+
+// ******************************** //
+// cls_rc_refcount_put
+// check if keys exist in refcount
+
+put_calls( "object1", "key0" )@2 ;
+put_calls( "object2", "key1" )@2 ;
+put_calls( "object3", "key5" )@2 ;
+//put_calls( A, B )@next :- put_calls( A, B ) ;
+
+obj_refcount( OBID, REFSTR, REFBOOL ) :- obj_refcount( OBID, REFSTR, REFBOOL ), 
+                                         notin put_calls( OBID, REFSTR ), 
+                                         true_refbool( REFBOOL ) ;
 
 
-// **************************************************************************************************** //
-//                                                                                                      //
-// cls_rc_refcount_set                                                                                  //
-//                                                                                                      //
-// map all existing keys to true in refcount                                                            //
-//                                                                                                      //
-// **************************************************************************************************** //
-obj_refcount( OBID, REFSTR, REFBOOL ) :- obj_refcount( OBID, REFSTR, _ ), true_refbool( REFBOOL ) ;
+// ******************************** //
+// cls_rc_refcount_set
+// map all existing keys to true in refcount
+
+obj_refcount( OBID, REFSTR, REFBOOL ) :- obj_refcount( OBID, REFSTR, _ ), 
+                                         true_refbool( REFBOOL ) ;
 
 
-// **************************************************************************************************** //
-//                                                                                                      //
-// cls_rc_refcount_read                                                                                 //
-// The cls_rc_refcount_read interface returns the reference count list for a particular object.         //
-//                                                                                                      //
-// **************************************************************************************************** //
+// ******************************** //
+// cls_rc_refcount_read
+// The cls_rc_refcount_read interface returns the reference count list for a particular object.
+
 read_results( OBID, REFSTR ) :- obj_refcount( OBID, REFSTR, _ ) ;
 
 
+// ******************************** //
 pre( STUFF ) :- object_table( STUFF ) ;
 post( STUFF ) :- object_table( STUFF ) ;
 
