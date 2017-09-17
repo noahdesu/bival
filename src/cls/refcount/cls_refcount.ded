@@ -1,9 +1,17 @@
 
-// KD
-// 29Aug2017
-
 // ceph reference :
 // https://github.com/ceph/ceph/blob/285aec13a84ac945236fa66b35c461cce75e4c7d/src/cls/refcount/cls_refcount.cc
+
+// current set of objects
+object_table( "object1" )@1 ;
+object_table( "object2" )@1 ;
+
+
+default_refstr( "object1", "DEFAULT" )@1 ;
+default_refstr( "object2", "DEFAULT" )@1 ;
+default_refbool( "object1", "TRUE" )@1 ;
+default_refbool( "object2", "FALSE" )@1 ;
+obj_refcount( OBID, REFSTR, REFBOOL ) :- object_table( OBID ), default_refstr( OBID, REFSTR ), default_refbool( OBID, REFBOOL ) ;
 
 
 // **************************************************************************************************** //
@@ -12,9 +20,7 @@
 //                                                                                                      //
 // **************************************************************************************************** //
 
-obj_refcount( OBID, Refstr, Refbool, SndTime+1 ) :- obj_refcount(    OBID, Refstr, Refbool, SndTime ),
-                                                    notin get_calls( OBID, Refstr, SndTime ),
-                                                    notin put_calls( OBID, Refstr, SndTime );
+obj_refcount( OBID, Refstr, Refbool )@async :- obj_refcount( OBID, Refstr, Refbool ), notin get_calls( OBID, Refstr ), notin put_calls( OBID, Refstr );
 
 
 
@@ -26,15 +32,13 @@ obj_refcount( OBID, Refstr, Refbool, SndTime+1 ) :- obj_refcount(    OBID, Refst
 //                                                                                                      //
 // **************************************************************************************************** //
 
-get_calls( “object1”, “key1” ) ;
-get_calls( “object2”, “key1” ) ;
-get_calls( “object3”, “key5” ) ;
+get_calls( "object1", "DEFAULT" )@1 ;
+get_calls( "object2", "key1" )@1 ;
+get_calls( "object3", "key5" )@1 ;
 
-
-obj_refcount( OBID, REFSTR, REFBOOL, SndTime+1 ) :- obj_refcount( OBID, REFSTR, _, SndTime ), 
-                                                    get_calls(    OBID, REFSTR, SndTime ), 
-                                                    clock(        OBID, OBID, SndTime, _ ),
-                                                    REFBOOL = true ;
+set_refbool( "object1", "TRUE" )@1 ;
+set_refbool( "object2", "TRUE" )@1 ;
+obj_refcount( OBID, REFSTR, REFBOOL )@next :- obj_refcount( OBID, REFSTR, _ ), get_calls( OBID, REFSTR ), set_refbool( OBID, REFBOOL) ;
 
 
 // **************************************************************************************************** //
@@ -45,14 +49,13 @@ obj_refcount( OBID, REFSTR, REFBOOL, SndTime+1 ) :- obj_refcount( OBID, REFSTR, 
 //                                                                                                      //
 // **************************************************************************************************** //
 
-put_calls( “object1”, “key1” ) ;
-put_calls( “object2”, “key1” ) ;
-put_calls( “object3”, “key5” ) ;
+put_calls( "object1", "DEFAULT" )@1 ;
+put_calls( "object2", "key1" )@1 ;
+put_calls( "object3", "key5" )@1 ;
 
+true_refbool( "TRUE" )@1 ;
 
-found_keys( OBID, REFSTR, SndTime ) :- obj_refcount( OBID, REFSTR, REFBOOL, SndTime ), 
-                                       put_calls(    OBID, REFSTR, SndTime ), 
-                                       REFBOOL = true ;
+found_keys( OBID, REFSTR ) :- obj_refcount( OBID, REFSTR, REFBOOL ), put_calls( OBID, REFSTR ), true_refbool( REFBOOL ) ;
 
 
 // **************************************************************************************************** //
@@ -62,8 +65,7 @@ found_keys( OBID, REFSTR, SndTime ) :- obj_refcount( OBID, REFSTR, REFBOOL, SndT
 // map all existing keys to true in refcount                                                            //
 //                                                                                                      //
 // **************************************************************************************************** //
-obj_refcount( OBID, REFSTR, REFBOOL, SndTime ) :- object_refcount( OBID, REFSTR, SndTime ), 
-                                                  REFBOOL = true ;
+obj_refcount( OBID, REFSTR, REFBOOL ) :- obj_refcount( OBID, REFSTR, _ ), true_refbool( REFBOOL ) ;
 
 
 // **************************************************************************************************** //
@@ -75,30 +77,8 @@ obj_refcount( OBID, REFSTR, REFBOOL, SndTime ) :- object_refcount( OBID, REFSTR,
 read_results( OBID, REFSTR ) :- obj_refcount( OBID, REFSTR, _ ) ;
 
 
-// **************************************************************************************************** //
-//                                                                                                      //
-// check for error conditions                                                                           //
-//                                                                                                      //
-// NOTES :
-// errors occur if :
-//   1. encoding process fails
-//   2. decoding process fails
-//   3. individual operations fail
-// **************************************************************************************************** //
-// error( OBID, REFSTR, REFBOOL, MSG, SndTime ) :- ????
-
-
-// ==================================================================================================== //
-//                                                                                                      //
-// define statements (olg programs only)                                                                 //
-//                                                                                                      //
-// ==================================================================================================== //
-define(obj_refcount,{str,str,str,int}) ;
-define(get_calls,{str,str}) ;
-define(put_calls,{str,str}) ;
-define(found_keys,{str,str,int}) ;
-define(read_results,{str,str}) ;
-
+pre( STUFF ) :- object_table( STUFF ) ;
+post( STUFF ) :- object_table( STUFF ) ;
 
 ///////////
 //  EOF  //
