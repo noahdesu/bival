@@ -9,6 +9,10 @@ object_table( "object1" )@1 ;
 object_table( "object2" )@1 ;
 object_table( A )@next :- object_table( A ) ;
 
+// ******************************** //
+// helpful relations for bypassing
+// c4 equation limitations.
+
 set_true_refbool( "object1", "TRUE" )@1 ;
 set_true_refbool( "object2", "TRUE" )@1 ;
 
@@ -17,15 +21,15 @@ all_refstrs( "key1" )@1 ;
 all_refstrs( "key5" )@1 ;
 
 true_refbool( "TRUE" )@1 ;
+false_refbool( "FALSE" )@1 ;
 
-// ******************************** //
 default_refstr( "object1", "DEFAULT" )@1 ;
 default_refstr( "object2", "DEFAULT" )@1 ;
 default_refbool( "object1", "FALSE" )@1 ;
 default_refbool( "object2", "FALSE" )@1 ;
 
 // ******************************** //
-// initlization rule
+// initialization rule
 
 obj_refcount( OBID, REFSTR, REFBOOL ) :- object_table( OBID ), 
                                          default_refstr( OBID, REFSTR ), 
@@ -35,8 +39,8 @@ obj_refcount( OBID, REFSTR, REFBOOL ) :- object_table( OBID ),
 // persistance rule
 
 obj_refcount( OBID, REFSTR, REFBOOL )@async :- obj_refcount( OBID, REFSTR, REFBOOL ),
-                                               notin get_calls( OBID, REFSTR ),
-                                               notin put_calls( OBID, REFSTR ) ;
+                                               notin get_calls( OBID, _ ),
+                                               notin put_calls( OBID, _ ) ;
 
 // ******************************** //
 // cls_rc_refcount_get
@@ -45,7 +49,6 @@ obj_refcount( OBID, REFSTR, REFBOOL )@async :- obj_refcount( OBID, REFSTR, REFBO
 get_calls( "object1", "key0" )@1 ;
 get_calls( "object2", "key1" )@1 ;
 get_calls( "object3", "key5" )@1 ;
-//get_calls( A, B )@next :- get_calls( A, B ) ;
 
 obj_refcount( OBID, REFSTR, REFBOOL )@next :- obj_refcount( OBID, _, _ ), 
                                               get_calls( OBID, REFSTR ), 
@@ -55,14 +58,15 @@ obj_refcount( OBID, REFSTR, REFBOOL )@next :- obj_refcount( OBID, _, _ ),
 // cls_rc_refcount_put
 // check if keys exist in refcount
 
-put_calls( "object1", "key0" )@2 ;
-put_calls( "object2", "key1" )@2 ;
-put_calls( "object3", "key5" )@2 ;
-//put_calls( A, B )@next :- put_calls( A, B ) ;
+// put == free ref. get == set ref.
 
-obj_refcount( OBID, REFSTR, REFBOOL ) :- obj_refcount( OBID, REFSTR, REFBOOL ), 
-                                         notin put_calls( OBID, REFSTR ), 
-                                         true_refbool( REFBOOL ) ;
+put_calls( "object1", "key0" )@1 ;
+put_calls( "object2", "key1" )@1 ;
+put_calls( "object3", "key5" )@1 ;
+
+found_keys( OBID, REFSTR, REFBOOL ) :- obj_refcount( OBID, REFSTR, REFBOOL ), 
+                                       put_calls( OBID, REFSTR ), 
+                                       true_refbool( REFBOOL ) ;
 
 
 // ******************************** //
@@ -71,6 +75,11 @@ obj_refcount( OBID, REFSTR, REFBOOL ) :- obj_refcount( OBID, REFSTR, REFBOOL ),
 
 obj_refcount( OBID, REFSTR, REFBOOL ) :- obj_refcount( OBID, REFSTR, _ ), 
                                          true_refbool( REFBOOL ) ;
+
+// trying to gc the leftover obid,default,false,1 tuples.
+//obj_refcount( OBID, REFSTR, REFBOOL ) :- obj_refcount( OBID, REFSTR, REFBOOL ),
+//                                         notin default_refstr( OBID, REFSTR ),
+//                                         notin default_refbool( OBID, REFBOOL ) ;
 
 
 // ******************************** //
@@ -81,6 +90,8 @@ read_results( OBID, REFSTR ) :- obj_refcount( OBID, REFSTR, _ ) ;
 
 
 // ******************************** //
+// generate useless prov graph.
+
 pre( STUFF ) :- object_table( STUFF ) ;
 post( STUFF ) :- object_table( STUFF ) ;
 
